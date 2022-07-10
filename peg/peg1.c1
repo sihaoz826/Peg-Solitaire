@@ -1,0 +1,46 @@
+/**************************************************************************/
+/*              COPYRIGHT Carnegie Mellon University 2021                 */
+/* Do not post this file or any derivative on a public site or repository */
+/**************************************************************************/
+/*
+ * Peg solitaire solver
+ *
+ * 15-122 Principles of Imperative Computation */
+
+#use <conio>
+#use <util>
+
+
+
+int solve_peg(board B, stack_t S, int pegs){
+  int min = pegs;
+  if (num_pegs(B) == 1) return 1;
+  else{
+    stack_t temp = all_moves(B);
+    while(!stack_empty(temp)){
+      move a = (move)pop(temp);
+      push(S, (void*)a);
+      make_move(B, a);
+      int num = solve_peg(B, S, num_pegs(B));
+      if (num < min) min = num;
+      if (num != 1){
+        undo_move(B, a);
+        pop(S);
+      }
+      if (num == 1) return 1;
+    }
+  return min;
+  }
+}
+
+int solve(board B, stack_t Sol)
+//@requires is_board(B);
+//@ensures is_board(B);
+{
+  stack_t temp = stack_new();
+  int result = solve_peg(B, temp, num_pegs(B));
+  while(!stack_empty(temp)){
+    push(Sol, pop(temp));
+  }
+  return result;
+}

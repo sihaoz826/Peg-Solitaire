@@ -1,0 +1,107 @@
+/**************************************************************************/
+/*              COPYRIGHT Carnegie Mellon University 2021                 */
+/* Do not post this file or any derivative on a public site or repository */
+/**************************************************************************/
+/*
+ * Peg solitaire test file for peg-moves.c1
+ *
+ * 15-122 Principles of Imperative Computation
+ */
+
+#use <args>
+#use <conio>
+#use <util>
+
+
+
+// You are welcome to define additional helper functions for your tests
+void print_moves(void* m){
+  move a = (move)m;
+  printint(row_start(a));
+  print(", ");
+  printint(col_start(a));
+  print(", ");
+  printint(row_end(a));
+  print(", ");
+  printint(col_end(a));
+  print(", ");
+  return;
+}
+
+
+
+int main() {
+  // Creating a board from file
+
+  int[] B_init = alloc_array(int, 8*8);
+
+  args_t args = args_parse();
+  int argc = args->argc;
+  if (argc == 0) {
+    printf("Using English board as default\n");
+    english_board(B_init);
+  } else if (argc == 1) {
+    read_board(args->argv[0], B_init, 8*8);
+  }
+
+  print_board(B_init);
+  print("\n");
+
+  // Using B_init, test the functions you wrote in file peg-moves.c1
+  
+
+  // A sample test
+
+
+  int[] B = alloc_array(int, 8*8);         // make a copy (B) of B_init
+  for (int i = 0; i < 64; i++)
+    B[i] = B_init[i];
+
+
+  move test_move = new_move(3, 5, 3, 3);
+  move a = new_move(1, 4, 3, 4);
+
+  assert(row_start(test_move) == 3);       // check that row_start works
+  assert(col_start(test_move) == 5);        // check that col_start works
+  assert(row_end(test_move) == 3);         // check that row_end works
+  assert(row_end(test_move) == 3);        // check that col_end works
+
+  make_move(B, test_move); 
+  make_move(B, a); 
+  print_board(B); 
+  print("\n");               
+
+
+  undo_move(B, a);
+  undo_move(B, test_move);                 
+
+  for (int i = 0; i < 64; i++)             // check that B has been restored
+    assert(B[i] == B_init[i]);             // to B_init
+
+  print_board(B);
+
+
+  // WRITE MORE TESTS!!!
+  // - make and undo several moves
+  // - start from different boards
+  // - ...
+
+
+  // Test all_moves
+
+  int[] C = alloc_array(int, 8*8);
+  C[7] = 1;
+  C[8] = 1;
+  C[9] = 0;
+
+  B[35] = 0;
+  stackelem_print_fn* elem_print = &print_moves;
+  stack_t S = all_moves(C);
+  stack_print(S, elem_print);
+
+
+
+
+  printf("All tests passed!\n");
+  return 0;
+}

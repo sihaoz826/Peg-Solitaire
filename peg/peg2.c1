@@ -1,0 +1,225 @@
+/**************************************************************************/
+/*              COPYRIGHT Carnegie Mellon University 2021                 */
+/* Do not post this file or any derivative on a public site or repository */
+/**************************************************************************/
+/*
+ * Peg solitaire solver
+ *
+ * 15-122 Principles of Imperative Computation */
+
+#use <conio>
+#use <util>
+
+
+struct compact_board {
+  int i1;         // First  half of a compacted board
+  int i2;         // second half of a compacted board
+  int number;
+};
+typedef struct compact_board cboard;
+
+
+// got this power function from course website
+int POW (int x, int y)
+//@requires y >= 0;
+{
+  if (y == 0) return 1;
+  else return x * POW(x, y-1);
+}
+
+
+cboard* compress (board B)
+{
+  cboard* a = alloc(struct compact_board);
+  int first = 0;
+  int second = 0;
+  for (int i = 0; i < 32; i++){
+    if (B[i] == 1) first += POW(2, i);
+  }
+  for (int j = 32; j < 64; j++){
+    if (B[j] == 1) second += POW(2, j-32);
+  }
+  a->i1 = first;
+  a->i2 = second;
+  a->number = 0;
+  return a;
+}
+
+
+
+
+/* Client side implementation for hashtables.  hist_See lib/hdict.c1 */
+
+int cboard_hash(key k)
+//@requires k != NULL;
+{
+  cboard* a = (cboard*)k;
+  int first = 1664525 * a->i1 + 1013904223;
+  int second = 1664525 * a->i2 + 1013904223;
+  int result = 1664525 * first + 1013904223 * second;
+  return result;
+}
+
+bool cboard_eq(key k1, key k2)
+//@requires k1 != NULL && k2 != NULL;
+{
+  cboard* k_one = (cboard*)k1;
+  cboard* k_two = (cboard*)k2;
+  return (k_one->i1 == k_two->i1 && k_one->i2 == k_two->i2);
+}
+
+key cboard_key(entry e)
+//@requires e != NULL;
+//@ensures \result != NULL;
+{
+  return e;
+}
+
+/*
+int solve_peg(board B, stack_t S, int pegs, hdict_t dic){
+  int min = pegs;
+  cboard* test = compress(B);
+  stack_t temp = all_moves(B);
+
+  if (num_pegs(B) == 1) return 1;
+
+  key z = (key)test;
+  if (hdict_lookup(dic, z) != NULL) return test->number;
+
+  if (stack_empty(temp)){
+    return num_pegs(B);
+  }
+
+  else{
+    while(!stack_empty(temp)){
+      move a = (move)pop(temp);
+      push(S, (void*)a);
+      make_move(B, a);
+
+      int num = solve_peg(B, S, num_pegs(B), dic);
+      if (num < min) min = num;
+      if (num != 1){
+        undo_move(B, a);
+        pop(S);
+      }
+      if (num == 1) return 1;
+    }
+
+  if (min != 1) hdict_insert(dic, (void*)test); 
+  return min;
+  }
+}
+
+int solve(board B, stack_t Sol)
+//@requires is_board(B);
+//@ensures is_board(B);
+{
+  hdict_t dic = hdict_new(150, &cboard_key, &cboard_hash, &cboard_eq);
+  stack_t temp = stack_new();
+  int result = solve_peg(B, temp, num_pegs(B), dic);
+  while(!stack_empty(temp)){
+    push(Sol, pop(temp));
+  }
+  return result;
+}
+*/
+
+int solve_peg(board B, stack_t S, int peg, hdict_t dic){
+  int min = peg;
+  stack_t allmoves = all_moves(B);
+  cboard* comp = compress(B);
+  comp->number = min;
+
+
+  if (num_pegs(B) == 1){
+    return 1;
+  }
+
+  void* on = (void*)comp;
+  if (hdict_lookup(dic, on) != NULL){
+    return comp->number;
+  } 
+
+  if (stack_empty(allmoves)){
+    int d = num_pegs(B);
+    comp->number = d;
+    hdict_insert(dic, (void*)comp);
+    return d;
+  } 
+
+  else{
+    while(!stack_empty(allmoves)){
+      move a = (move)pop(allmoves);
+      make_move(B, a);
+      push(S, (void*)a);
+
+
+      int num = solve_peg(B, S, num_pegs(B), dic);
+      if (num < min){
+        min = num;
+      }
+      if (num != 1){
+        pop(S);
+        undo_move(B, a);
+      }
+      else{
+        return 1;
+      }
+    }
+    if (min != 1){
+      comp->number = min; 
+      hdict_insert(dic, (void*)comp);
+    }
+    comp->number = min; 
+    hdict_insert(dic, (void*)comp);
+    return min;
+  }
+}
+
+void print_moves(void* m){
+  move a = (move)m;
+  printint(row_start(a));
+  print(", ");
+  printint(col_start(a));
+  print(", ");
+  printint(row_end(a));
+  print(", ");
+  printint(col_end(a));
+  print(", ");
+  return;
+}
+
+int solve(board B, stack_t Sol)
+//@requires is_board(B);
+//@ensures is_board(B);
+{
+  hdict_t dic = hdict_new(150, &cboard_key, &cboard_hash, &cboard_eq);
+  stack_t temp = stack_new();
+  int result = solve_peg(B, temp, num_pegs(B), dic);
+  while(!stack_empty(temp)){
+    push(Sol, pop(temp));
+  }
+  stackelem_print_fn* elem_print = &print_moves;
+  stack_print(Sol, elem_print);
+  print("\n");
+  printint(result);
+  print("\n");
+  return result;
+}
+/* OPTIONAL:
+   If you would like to use pegmark, implement the following function
+   that takes a cboard and returns the corresponding hash table entry.
+   hist_See file performance_debugging.txt for details.
+ */
+entry cboard_to_entry(cboard* c)
+// some contracts may be useful
+{
+  assert(false);  // Delete me
+  return NULL;    // Change me!
+}
+
+
+
+/*
+ * Copy here your code from peg1.c1 to continue
+ */

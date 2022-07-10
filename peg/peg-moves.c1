@@ -1,0 +1,221 @@
+/**************************************************************************/
+/*              COPYRIGHT Carnegie Mellon University 2021                 */
+/* Do not post this file or any derivative on a public site or repository */
+/**************************************************************************/
+/*
+ * Peg solitaire solver
+ *
+ * 15-122 Principles of Imperative Computation */
+
+#use <conio>
+#use <util>
+
+typedef struct peg_data* move;
+struct peg_data {
+  int from_index;
+  int to_index;
+};
+
+
+move new_move(int from_row, int from_col, int to_row, int to_col)
+//@requires 0 <= from_row && from_row < 8;
+//@requires 0 <= to_row && to_row < 8;
+//@requires 0 <= from_col && from_col < 8;
+//@requires 0 <= to_col && to_col < 8;
+/*@requires (to_row == from_row+2 && to_col == from_col)
+            || (to_row == from_row-2 && to_col == from_col)
+            || (to_row == from_row && to_col == from_col+2)
+            || (to_row == from_row && to_col == from_col-2);@*/
+{
+  move new = alloc(struct peg_data);
+  new->from_index = from_row*8 + from_col;
+  new->to_index = to_row*8 + to_col;
+  return new;
+}
+
+int row_start(move m)
+{
+  return m->from_index/8;
+}
+
+int col_start(move m)
+{
+  return m->from_index%8;
+}
+
+int row_end(move m)
+{
+  return m->to_index/8;
+}
+
+int col_end(move m)
+{
+  return m->to_index%8;
+}
+
+int mid_index(move m)
+{
+  int mid_row = (row_start(m)+row_end(m))/2;
+  int mid_col = (col_start(m)+col_end(m))/2;
+  return mid_row*8 + mid_col;
+}
+
+
+void make_move(board B, move m)
+//@requires B[m->from_index] == 1;
+//@requires B[mid_index(m)] == 1;
+//@requires B[m->to_index] == 0;
+{
+  B[m->from_index] = 0;
+  B[mid_index(m)] = 0;
+  B[m->to_index] = 1;
+}
+
+void undo_move(board B, move m)
+//@requires B[m->from_index] == 0;
+//@requires B[mid_index(m)] == 0;
+//@requires B[m->to_index] == 1;
+{
+  B[m->from_index] = 1;
+  B[mid_index(m)] = 1;
+  B[m->to_index] = 0;
+}
+
+int get_row(int index){
+  return index/8;
+}
+
+int get_col(int index){
+  return index%8;
+}
+
+
+
+stack_t all_moves(board B)
+//@requires is_board(B);
+//@ensures is_board(B);
+{
+  stack_t S = stack_new();
+  for (int i = 0; i <= 63; i++){
+    //left to right
+    if (i <= 61){
+      int startR = get_row(i);
+      int startC = get_col(i);
+      int endR = get_row(i+2);
+      int endC = get_col(i+2);
+      if (B[i] == 1 && B[i+1] == 1 && B[i+2] == 0 && startR == endR){
+        move temp = new_move(startR, startC, endR, endC);
+        push(S, (void*)temp);  
+      }
+    }
+
+    //right to left
+    if (i >= 2){
+      int startR = get_row(i);
+      int startC = get_col(i);
+      int endR = get_row(i-2);
+      int endC = get_col(i-2);
+      if (B[i] == 1 && B[i-1] == 1 && B[i-2] == 0 && startR == endR){
+        move temp = new_move(startR, startC, endR, endC);
+        push(S, (void*)temp);  
+      }
+    }
+
+    //up to down
+    if (i <= 47){
+      int startR = get_row(i);
+      int startC = get_col(i);
+      int endR = get_row(i+16);
+      int endC = get_col(i+16);
+      if (B[i] == 1 && B[i+8] == 1 && B[i+16] == 0 && startC == endC){
+        move temp = new_move(startR, startC, endR, endC);
+        push(S, (void*)temp);  
+      }
+    }
+
+    //down to up
+    if (i >= 16){
+      int startR = get_row(i);
+      int startC = get_col(i);
+      int endR = get_row(i-16);
+      int endC = get_col(i-16);
+      if (B[i] == 1 && B[i-8] == 1 && B[i-16] == 0 && startC == endC){
+        move temp = new_move(startR, startC, endR, endC);
+        push(S, (void*)temp);  
+      }
+    }
+
+  }
+  return S;
+}
+
+/*
+stack_t all_moves(board B)
+//@requires is_board(B);
+//@ensures is_board(B);
+{
+  stack_t S = stack_new();
+  //left to right
+  for (int i = 0; i <= 61; i++){
+    int start = B[i];
+    int mid = B[i+1];
+    int end = B[i+2];
+    if (start == 1 && mid == 1 && end == 0){
+      int startI = i;
+      int endI = i+2;
+      move temp = alloc(struct peg_data);
+      temp->from_index = startI;
+      temp->to_index = endI;
+      push(S, (void*)temp);
+    }
+  }
+
+  //right to left
+  for (int j = 63; j >= 2; j--){
+    int start = B[j];
+    int mid = B[j-1];
+    int end = B[j-2];
+    if (start == 1 && mid == 1 && end == 0){
+      int startI = j;
+      int endI = j-2;
+      move temp = alloc(struct peg_data);
+      temp->from_index = startI;
+      temp->to_index = endI;
+      push(S, (void*)temp);
+    }
+  }
+
+  //down to up
+  for (int w = 0; w <= 47; w++){
+    int start = B[w];
+    int mid = B[w+8];
+    int end = B[w+16];
+    if (start == 1 && mid == 1 && end == 0){
+      int startI = w;
+      int endI = w+16;
+      move temp = alloc(struct peg_data);
+      temp->from_index = startI;
+      temp->to_index = endI;
+      push(S, (void*)temp);
+    }
+  }
+
+  //up to down
+  for (int z = 63; z >= 16; z--){
+    int start = B[z];
+    int mid = B[z-8];
+    int end = B[z-16];
+    if (start == 1 && mid == 1 && end == 0){
+      int startI = z;
+      int endI = z-16;
+      move temp = alloc(struct peg_data);
+      temp->from_index = startI;
+      temp->to_index = endI;
+      push(S, (void*)temp);
+    }
+  }
+
+  return S;
+
+}
+*/
